@@ -33,7 +33,7 @@
         <h3 id="pageTitle">正在讀取雲端設定...</h3>
         <form id="recipeForm">
             <div class="form-group">
-                <label>食譜名稱：</label>
+                <label>食譜名稱 (必填)：</label>
                 <input type="text" id="recipeName" required placeholder="例如：酥炸鮮魚片明太子醬拌飯">
             </div>
             
@@ -50,14 +50,14 @@
             </div>
             
             <div class="form-group">
-                <label>YouTube 影片連結 (最多 6 個)：</label>
+                <label>YouTube 影片連結 (最多 6 個，選填)：</label>
                 <div id="videoInputsContainer"></div>
                 <button type="button" id="addVideoFieldBtn" style="padding:0.4rem 0.8rem; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:5px;">+ 增加影片欄位</button>
             </div>
             
             <div class="form-group">
-                <label>簡易作法/食材描述：</label>
-                <textarea id="recipeDesc" rows="5" required placeholder="請輸入食材與步驟簡述..."></textarea>
+                <label>簡易作法/食材描述 (選填)：</label>
+                <textarea id="recipeDesc" rows="5" placeholder="請輸入食材與步驟簡述（可留空）..."></textarea>
             </div>
             
             <div class="modal-actions">
@@ -99,7 +99,7 @@
             const row = document.createElement('div');
             row.className = 'video-input-row';
             row.innerHTML = `
-                <input type="url" class="recipe-video-url" style="flex:1; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" placeholder="請輸入影片網址" value="${value}">
+                <input type="url" class="recipe-video-url" style="flex:1; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" placeholder="請輸入影片網址（不填請按右側✕刪除）" value="${value}">
                 <button type="button" class="btn-danger" onclick="removeVideoRow(this)">✕</button>
             `;
             videoInputsContainer.appendChild(row);
@@ -177,6 +177,7 @@
             submitBtn.innerText = "資料超高效壓縮同步中...";
             submitBtn.disabled = true;
 
+            // 只收集有填寫內容的網址
             const urls = [];
             videoInputsContainer.querySelectorAll('.recipe-video-url').forEach(i => { if(i.value.trim()) urls.push(i.value.trim()); });
 
@@ -202,7 +203,7 @@
                 image: finalImgData, 
                 stepImage: finalStepImgData, 
                 youtubes: urls, 
-                desc: document.getElementById('recipeDesc').value
+                desc: document.getElementById('recipeDesc').value || "" // 若留空則存入空字串
             };
 
             try {
@@ -211,10 +212,10 @@
                 } else {
                     await updateDoc(doc(db, "recipes", editId), data);
                 }
-                alert("🎉 雙圖儲存成功！已順利同步至雲端資料庫！");
+                alert("🎉 儲存成功！已順利同步至雲端資料庫！");
                 window.location.href = 'admin.html';
             } catch (err) {
-                alert("❌ 儲存失敗！可能圖片檔案依然過大，請嘗試更小的圖片。");
+                alert("❌ 儲存失敗！");
                 console.error(err);
                 submitBtn.innerText = "儲存食譜";
                 submitBtn.disabled = false;
