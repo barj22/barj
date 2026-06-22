@@ -17,7 +17,7 @@
         h3 { margin-bottom: 1.5rem; color: #2c3e50; font-size: 1.5rem; border-bottom: 2px solid #34495e; padding-bottom: 0.4rem; }
         .form-group { margin-bottom: 1.5rem; background: #fafafa; padding: 1rem; border-radius: 6px; border-left: 4px solid #34495e; }
         .form-group label { display:block; margin-bottom: 0.5rem; font-weight:bold; }
-        .form-group input[type="text"], .form-group textarea { width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:4px; font-size: 1rem; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group textarea { width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:4px; font-size: 1rem; }
         
         .video-input-row { display:flex; gap:0.5rem; margin-bottom:0.5rem; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -35,6 +35,11 @@
             <div class="form-group">
                 <label>食譜名稱 (必填)：</label>
                 <input type="text" id="recipeName" required placeholder="例如：酥炸鮮魚片明太子醬拌飯">
+            </div>
+
+            <div class="form-group">
+                <label>🔢 排序數字 (選填，數字越小排越前面，例如：1、2、3...)：</label>
+                <input type="number" id="recipeOrder" min="1" placeholder="預設為 999 (排到最後面)">
             </div>
             
             <div class="form-group">
@@ -99,7 +104,7 @@
             const row = document.createElement('div');
             row.className = 'video-input-row';
             row.innerHTML = `
-                <input type="url" class="recipe-video-url" style="flex:1; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" placeholder="請輸入影片網址（不填請按右側✕刪除）" value="${value}">
+                <input type="url" class="recipe-video-url" style="flex:1; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" placeholder="請輸入影片網址" value="${value}">
                 <button type="button" class="btn-danger" onclick="removeVideoRow(this)">✕</button>
             `;
             videoInputsContainer.appendChild(row);
@@ -118,20 +123,17 @@
                         const recipe = docSnap.data();
                         document.getElementById('recipeName').value = recipe.name || "";
                         document.getElementById('recipeDesc').value = recipe.desc || "";
+                        // 載入排序權重
+                        document.getElementById('recipeOrder').value = recipe.sortOrder !== undefined ? recipe.sortOrder : "";
                         
                         currentExistingImg = recipe.image || "";
                         currentExistingStepImg = recipe.stepImage || "";
                         
                         if(currentExistingImg) {
                             document.getElementById('imgStatus').innerText = "💡 雲端已有成品主圖（不修改請勿選擇檔案）";
-                        } else {
-                            document.getElementById('imgStatus').innerText = "⚠️ 尚未上傳成品主圖";
                         }
-                        
                         if(currentExistingStepImg) {
                             document.getElementById('stepImgStatus').innerText = "💡 雲端已有步驟大圖（不修改請勿選擇檔案）";
-                        } else {
-                            document.getElementById('stepImgStatus').innerText = "⚠️ 尚未上傳詳細步驟流程大圖";
                         }
                         
                         if(recipe.youtubes && recipe.youtubes.length > 0) {
@@ -177,11 +179,9 @@
             submitBtn.innerText = "資料超高效壓縮同步中...";
             submitBtn.disabled = true;
 
-            // 只收集有填寫內容的網址
             const urls = [];
             videoInputsContainer.querySelectorAll('.recipe-video-url').forEach(i => { if(i.value.trim()) urls.push(i.value.trim()); });
 
-            // 1. 處理成品主圖
             let finalImgData = currentExistingImg;
             const fileInput = document.getElementById('recipeImgFile');
             if(fileInput.files.length > 0) {
@@ -191,19 +191,23 @@
                 finalImgData = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=500&q=80";
             }
 
-            // 2. 處理步驟流程圖
             let finalStepImgData = currentExistingStepImg;
             const stepFileInput = document.getElementById('stepImgFile');
             if(stepFileInput.files.length > 0) {
                 finalStepImgData = await compressImage(stepFileInput.files[0], 1024, 0.55);
             }
 
+            // 處理排序權重轉為數字類型
+            const orderInput = document.getElementById('recipeOrder').value;
+            const finalSortOrder = orderInput === "" ? 999 : parseInt(orderInput, 10);
+
             const data = { 
                 name: document.getElementById('recipeName').value, 
+                sortOrder: finalSortOrder, // 寫入排序欄位
                 image: finalImgData, 
                 stepImage: finalStepImgData, 
                 youtubes: urls, 
-                desc: document.getElementById('recipeDesc').value || "" // 若留空則存入空字串
+                desc: document.getElementById('recipeDesc').value || ""
             };
 
             try {
@@ -212,7 +216,7 @@
                 } else {
                     await updateDoc(doc(db, "recipes", editId), data);
                 }
-                alert("🎉 儲存成功！已順利同步至雲端資料庫！");
+                alert("🎉 儲存成功！排序設定已生效！");
                 window.location.href = 'admin.html';
             } catch (err) {
                 alert("❌ 儲存失敗！");

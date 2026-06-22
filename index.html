@@ -16,7 +16,6 @@
         
         .recipes-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; padding: 0 1rem; }
         
-        /* 圖片固定容器高度，確保排版絕對整齊 */
         .recipe-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; cursor: pointer; transition: 0.3s; border: 1px solid #f0e6df; height: 100%; text-decoration: none; color: inherit; }
         .recipe-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px rgba(0,0,0,0.1); }
         
@@ -67,6 +66,14 @@
                 const querySnapshot = await getDocs(collection(db, "recipes"));
                 allRecipes = [];
                 querySnapshot.forEach(doc => allRecipes.push({ id: doc.id, ...doc.data() }));
+                
+                // 🔥 核心修正：前台顯示也根據 sortOrder 進行由小到大排序
+                allRecipes.sort((a, b) => {
+                    const orderA = a.sortOrder !== undefined ? a.sortOrder : 999;
+                    const orderB = b.sortOrder !== undefined ? b.sortOrder : 999;
+                    return orderA - orderB;
+                });
+
                 renderRecipes(allRecipes);
             } catch (err) {
                 console.error("加載失敗:", err);
@@ -83,7 +90,7 @@
             list.forEach(recipe => {
                 const card = document.createElement('a');
                 card.className = 'recipe-card';
-                card.href = `recipe.html?id=${recipe.id}`; // 改為直接點選跳轉
+                card.href = `recipe.html?id=${recipe.id}`;
                 
                 let badgesHtml = '';
                 if(recipe.youtubes && recipe.youtubes.length > 0) {
