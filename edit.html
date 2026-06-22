@@ -40,13 +40,13 @@
             <div class="form-group">
                 <label>📸 上傳食譜「成品主圖」（顯示於首頁卡片）：</label>
                 <input type="file" id="recipeImgFile" accept="image/*">
-                <div id="imgStatus" style="font-size:0.85rem; margin-top:5px; color:#7f8c8d;"></div>
+                <div id="imgStatus" style="font-size:0.85rem; margin-top:5px; color:#e67e22; font-weight:bold;"></div>
             </div>
 
             <div class="form-group">
                 <label>📋 上傳詳細「步驟流程大圖」（內頁流程說明）：</label>
                 <input type="file" id="stepImgFile" accept="image/*">
-                <div id="stepImgStatus" style="font-size:0.85rem; margin-top:5px; color:#7f8c8d;"></div>
+                <div id="stepImgStatus" style="font-size:0.85rem; margin-top:5px; color:#e67e22; font-weight:bold;"></div>
             </div>
             
             <div class="form-group">
@@ -123,10 +123,15 @@
                         currentExistingStepImg = recipe.stepImage || "";
                         
                         if(currentExistingImg) {
-                            document.getElementById('imgStatus').innerText = "💡 雲端已有成品主圖（不修改請保留空白）";
+                            document.getElementById('imgStatus').innerText = "💡 雲端已有成品主圖（不修改請勿選擇檔案）";
+                        } else {
+                            document.getElementById('imgStatus').innerText = "⚠️ 尚未上傳成品主圖";
                         }
+                        
                         if(currentExistingStepImg) {
-                            document.getElementById('stepImgStatus').innerText = "💡 雲端已有步驟大圖（不修改請保留空白）";
+                            document.getElementById('stepImgStatus').innerText = "💡 雲端已有步驟大圖（不修改請勿選擇檔案）";
+                        } else {
+                            document.getElementById('stepImgStatus').innerText = "⚠️ 尚未上傳詳細步驟流程大圖";
                         }
                         
                         if(recipe.youtubes && recipe.youtubes.length > 0) {
@@ -141,7 +146,6 @@
             }
         }
 
-        // 核心加強優化：高效圖片壓縮演算法，大幅縮減位元率，杜絕 1MB 上限錯誤
         function compressImage(file, maxWidth = 1000, quality = 0.6) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -161,7 +165,6 @@
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        // 強制輸出為輕量化 jpeg
                         resolve(canvas.toDataURL('image/jpeg', quality));
                     };
                 };
@@ -177,15 +180,18 @@
             const urls = [];
             videoInputsContainer.querySelectorAll('.recipe-video-url').forEach(i => { if(i.value.trim()) urls.push(i.value.trim()); });
 
-            // 1. 處理成品主圖：縮小到 600px 即可（因為首頁小卡片不需要特大解析度）
-            let finalImgData = currentExistingImg || "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=500&q=80";
+            // 1. 處理成品主圖
+            let finalImgData = currentExistingImg;
             const fileInput = document.getElementById('recipeImgFile');
             if(fileInput.files.length > 0) {
                 finalImgData = await compressImage(fileInput.files[0], 600, 0.6); 
             }
+            if(!finalImgData) {
+                finalImgData = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=500&q=80";
+            }
 
-            // 2. 處理步驟流程圖：維持 1024px 大寬度確保流程上的文字清晰可見
-            let finalStepImgData = currentExistingStepImg || "";
+            // 2. 處理步驟流程圖
+            let finalStepImgData = currentExistingStepImg;
             const stepFileInput = document.getElementById('stepImgFile');
             if(stepFileInput.files.length > 0) {
                 finalStepImgData = await compressImage(stepFileInput.files[0], 1024, 0.55);
@@ -205,10 +211,10 @@
                 } else {
                     await updateDoc(doc(db, "recipes", editId), data);
                 }
-                alert("🎉 雙圖皆順利壓縮，並成功儲存至雲端資料庫！");
+                alert("🎉 雙圖儲存成功！已順利同步至雲端資料庫！");
                 window.location.href = 'admin.html';
             } catch (err) {
-                alert("❌ 儲存失敗！可能圖片檔案太大，請嘗試更小的圖片或聯絡工程師。");
+                alert("❌ 儲存失敗！可能圖片檔案依然過大，請嘗試更小的圖片。");
                 console.error(err);
                 submitBtn.innerText = "儲存食譜";
                 submitBtn.disabled = false;
