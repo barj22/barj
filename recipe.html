@@ -7,21 +7,32 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
         body { background-color: #f9f6f0; color: #4a3c31; padding: 2rem 1rem; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
         .btn-back { display: inline-block; margin-bottom: 1.5rem; color: #7f8c8d; text-decoration: none; font-size: 1rem; background: #eee; padding: 6px 15px; border-radius: 20px; font-weight: bold; }
         .btn-back:hover { background: #ddd; }
-        h2 { color: #d35400; margin-bottom: 1.5rem; font-size: 2rem; border-bottom: 2px solid #ffb347; padding-bottom: 0.5rem; }
         
-        /* 讓上傳的步驟長圖百分之百完整、高畫質呈現 */
-        .main-recipe-img { width: 100%; height: auto; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #fafafa; }
+        h2 { color: #d35400; margin-bottom: 1.5rem; font-size: 2.2rem; border-bottom: 2px solid #ffb347; padding-bottom: 0.5rem; }
         
-        .desc-box { background: #fff3e0; padding: 1.2rem; border-radius: 8px; color: #e67e22; margin-bottom: 2rem; line-height: 1.6; font-size: 1.05rem; white-space: pre-line; }
+        .intro-section { display: flex; gap: 2rem; margin-bottom: 2.5rem; align-items: flex-start; }
+        .main-recipe-img { width: 45%; max-height: 350px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: #fafafa; }
+        .desc-box { flex: 1; background: #fff3e0; padding: 1.2rem; border-radius: 8px; color: #e67e22; line-height: 1.6; font-size: 1.05rem; white-space: pre-line; min-height: 150px; }
         
+        .video-section { margin-bottom: 2.5rem; background: #fdfaf7; padding: 1.2rem; border-radius: 8px; border: 1px dashed #ffcc33; }
         .video-section h3 { color: #c0392b; margin-bottom: 0.8rem; }
         .video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        @media(max-width: 500px) { .video-grid { grid-template-columns: 1fr; } }
-        .video-btn { display: block; text-align: center; background: #ff4757; color: white; text-decoration: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 1rem; box-shadow: 0 3px 6px rgba(255,71,87,0.3); }
+        .video-btn { display: block; text-align: center; background: #ff4757; color: white; text-decoration: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 1rem; }
         .video-btn:hover { background: #ff6b81; }
+
+        /* 步驟大圖顯示區塊 */
+        .steps-section { border-top: 2px dashed #e0d0c0; padding-top: 2rem; margin-top: 2rem; }
+        .steps-section h3 { color: #2c3e50; margin-bottom: 1rem; font-size: 1.3rem; }
+        .step-large-img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: #fafafa; }
+
+        @media(max-width: 700px) {
+            .intro-section { flex-direction: column; }
+            .main-recipe-img { width: 100%; max-height: 300px; }
+            .video-grid { grid-template-columns: 1fr; }
+        }
         .loading { text-align: center; color: #888; font-size: 1.2rem; padding: 5rem 0; }
     </style>
 </head>
@@ -48,7 +59,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 解析網址參數獲取食譜 ID
         const urlParams = new URLSearchParams(window.location.search);
         const recipeId = urlParams.get('id');
 
@@ -75,15 +85,40 @@
                         videoHtml += `</div></div>`;
                     }
 
+                    // 【核心檢查點】確保這裡抓取的是與 edit.html 相同的 stepImage 欄位
+                    let stepImageHtml = '';
+                    if(recipe.stepImage) {
+                        stepImageHtml = `
+                            <div class="steps-section">
+                                <h3>📋 詳細料理步驟流程圖：</h3>
+                                <img class="step-large-img" src="${recipe.stepImage}" alt="步驟流程圖">
+                            </div>
+                        `;
+                    } else {
+                        // 如果資料庫中還沒有這張圖，顯示友善提示
+                        stepImageHtml = `
+                            <div class="steps-section" style="text-align:center; color:#999; padding:1rem; background:#f5f5f5; border-radius:6px;">
+                                💡 此食譜為舊資料，尚未上傳專屬的詳細步驟大圖。您可以前往後台「修改」補上傳唷！
+                            </div>
+                        `;
+                    }
+
                     container.innerHTML = `
                         <a href="index.html" class="btn-back">⬅ 返回食譜首頁</a>
                         <h2>${recipe.name}</h2>
-                        <img class="main-recipe-img" src="${recipe.image}" alt="${recipe.name}">
-                        <div class="desc-box"><strong>💡 料理簡述與作法：</strong><br>${recipe.desc || '暫無說明'}</div>
+                        
+                        <div class="intro-section">
+                            <img class="main-recipe-img" src="${recipe.image}" alt="${recipe.name}">
+                            <div class="desc-box">
+                                <strong>💡 料理簡述與食材：</strong><br>${recipe.desc || '暫無說明'}
+                            </div>
+                        </div>
+
                         ${videoHtml}
+                        ${stepImageHtml}
                     `;
                 } else {
-                    container.innerHTML = `<p>該食譜已不存在資料庫中！</p>`;
+                    container.innerHTML = `<p>該食譜已不存在！</p>`;
                 }
             } catch (err) {
                 console.error(err);
