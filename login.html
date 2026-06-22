@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者登入</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
+        body { background: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .login-box { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; margin-bottom: 0.4rem; font-weight: bold; color: #555; }
+        .form-group input { width: 100%; padding: 0.7rem; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; outline: none; }
+        .form-group input:focus { border-color: #3498db; }
+        .btn-login { width: 100%; background: #2c3e50; color: white; border: none; padding: 0.8rem; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; }
+        .btn-login:hover { background: #34495e; }
+        .error-msg { color: #e74c3c; font-size: 0.9rem; text-align: center; margin-top: 1rem; display: none; }
+        .back-home { display: block; text-align: center; margin-top: 1.5rem; color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h2>🔐 管理者系統登入</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>管理員帳號：</label>
+                <input type="text" id="username" required placeholder="請輸入帳號">
+            </div>
+            <div class="form-group">
+                <label>密碼：</label>
+                <input type="password" id="password" required placeholder="請輸入密碼">
+            </div>
+            <button type="submit" class="btn-login">認證並登入</button>
+            <div class="error-msg" id="errorMsg">❌ 帳號或密碼錯誤，請重新輸入！</div>
+        </form>
+        <a href="index.html" class="back-home">返回食譜首頁</a>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+
+            // 您可以在這裡自由修改自訂的帳號與密碼
+            if (user === "barj" && pass === "barj0916") {
+                // 登入成功，發放時效通行憑證（SessionStorage 關閉瀏覽器即失效）
+                sessionStorage.setItem('recipe_admin_auth', 'authenticated_true');
+                window.location.href = 'admin.html';
+            } else {
+                document.getElementById('errorMsg').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
