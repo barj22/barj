@@ -4,13 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>食譜詳情</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
         body { background-color: #f9f6f0; color: #4a3c31; padding: 2rem 1rem; }
         .container { max-width: 850px; margin: 0 auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
-        .btn-back { display: inline-block; margin-bottom: 1.5rem; color: #7f8c8d; text-decoration: none; font-size: 1rem; background: #eee; padding: 6px 15px; border-radius: 20px; font-weight: bold; }
+        
+        .top-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .btn-back { display: inline-block; color: #7f8c8d; text-decoration: none; font-size: 1rem; background: #eee; padding: 6px 15px; border-radius: 20px; font-weight: bold; }
         .btn-back:hover { background: #ddd; }
         
+        /* PDF 下載按鈕樣式 */
+        .btn-download-pdf { display: inline-flex; align-items: center; gap: 5px; color: white; text-decoration: none; font-size: 1rem; background: #9b59b6; padding: 6px 15px; border-radius: 20px; font-weight: bold; border: none; cursor: pointer; }
+        .btn-download-pdf:hover { background: #8e44ad; }
+
         h2 { color: #d35400; margin-bottom: 1.5rem; font-size: 2.2rem; border-bottom: 2px solid #ffb347; padding-bottom: 0.5rem; }
         
         .intro-section { display: flex; gap: 2rem; margin-bottom: 2.5rem; align-items: flex-start; }
@@ -23,7 +30,6 @@
         .video-btn { display: block; text-align: center; background: #ff4757; color: white; text-decoration: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 1rem; }
         .video-btn:hover { background: #ff6b81; }
 
-        /* 步驟大圖顯示區塊 */
         .steps-section { border-top: 2px dashed #e0d0c0; padding-top: 2rem; margin-top: 2rem; }
         .steps-section h3 { color: #2c3e50; margin-bottom: 1rem; font-size: 1.3rem; }
         .step-large-img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: #fafafa; }
@@ -85,7 +91,6 @@
                         videoHtml += `</div></div>`;
                     }
 
-                    // 【核心檢查點】確保這裡抓取的是與 edit.html 相同的 stepImage 欄位
                     let stepImageHtml = '';
                     if(recipe.stepImage) {
                         stepImageHtml = `
@@ -95,28 +100,46 @@
                             </div>
                         `;
                     } else {
-                        // 如果資料庫中還沒有這張圖，顯示友善提示
                         stepImageHtml = `
                             <div class="steps-section" style="text-align:center; color:#999; padding:1rem; background:#f5f5f5; border-radius:6px;">
-                                💡 此食譜為舊資料，尚未上傳專屬的詳細步驟大圖。您可以前往後台「修改」補上傳唷！
+                                💡 此食譜尚未上傳詳細步驟流程大圖。
                             </div>
                         `;
                     }
 
                     container.innerHTML = `
-                        <a href="index.html" class="btn-back">⬅ 返回食譜首頁</a>
-                        <h2>${recipe.name}</h2>
-                        
-                        <div class="intro-section">
-                            <img class="main-recipe-img" src="${recipe.image}" alt="${recipe.name}">
-                            <div class="desc-box">
-                                <strong>💡 料理簡述與食材：</strong><br>${recipe.desc || '暫無說明'}
-                            </div>
+                        <div class="top-actions">
+                            <a href="index.html" class="btn-back">⬅ 返回食譜首頁</a>
+                            <button id="downloadPdfBtn" class="btn-download-pdf">📥 下載此食譜 PDF</button>
                         </div>
+                        <div id="printArea">
+                            <h2>${recipe.name}</h2>
+                            
+                            <div class="intro-section">
+                                <img class="main-recipe-img" src="${recipe.image}" alt="${recipe.name}">
+                                <div class="desc-box">
+                                    <strong>💡 料理簡述與食材：</strong><br>${recipe.desc || '暫無說明'}
+                                </div>
+                            </div>
 
-                        ${videoHtml}
-                        ${stepImageHtml}
+                            ${videoHtml}
+                            ${stepImageHtml}
+                        </div>
                     `;
+
+                    // 綁定前台 PDF 下載事件
+                    document.getElementById('downloadPdfBtn').addEventListener('click', () => {
+                        const element = document.getElementById('printArea');
+                        const opt = {
+                            margin:       10,
+                            filename:     `${recipe.name || '食譜'}.pdf`,
+                            image:        { type: 'jpeg', quality: 0.98 },
+                            html2canvas:  { scale: 2, useCORS: true }, // 啟用跨域支援以讀取 base64 圖片
+                            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        html2pdf().set(opt).from(element).save();
+                    });
+
                 } else {
                     container.innerHTML = `<p>該食譜已不存在！</p>`;
                 }

@@ -10,6 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>編輯食譜</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
         body { background-color: #f4f6f9; color: #333; padding: 2rem 1rem; }
@@ -21,15 +22,19 @@
         
         .video-input-row { display:flex; gap:0.5rem; margin-bottom:0.5rem; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .modal-actions { display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem; }
+        .modal-actions { display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem; flex-wrap: wrap; }
         .btn-cancel { padding:0.6rem 1.2rem; background:#bdc3c7; color:white; border:none; border-radius:4px; text-decoration:none; font-weight:bold; cursor:pointer; }
         .btn-submit { padding:0.6rem 1.5rem; background:#2ecc71; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
         .btn-submit:disabled { background: #95a5a6; }
+        
+        /* PDF 按鈕樣式 */
+        .btn-pdf { padding:0.6rem 1.2rem; background:#9b59b6; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+        .btn-pdf:hover { background:#8e44ad; }
     </style>
 </head>
 <body>
 
-    <div class="form-container">
+    <div class="form-container" id="pdfArea">
         <h3 id="pageTitle">正在讀取雲端設定...</h3>
         <form id="recipeForm">
             <div class="form-group">
@@ -66,6 +71,7 @@
             </div>
             
             <div class="modal-actions">
+                <button type="button" id="downloadPdfBtn" class="btn-pdf" style="display:none; margin-right:auto;">📥 下載此食譜 PDF</button>
                 <a href="admin.html" class="btn-cancel">取消返回</a>
                 <button type="submit" id="submitBtn" class="btn-submit">儲存食譜</button>
             </div>
@@ -117,13 +123,14 @@
                 createVideoRow();
             } else {
                 document.getElementById('pageTitle').innerText = "📝 修改現有食譜資料";
+                // 修改模式下顯示下載 PDF 按鈕
+                document.getElementById('downloadPdfBtn').style.display = "inline-flex";
                 try {
                     const docSnap = await getDoc(doc(db, "recipes", editId));
                     if(docSnap.exists()) {
                         const recipe = docSnap.data();
                         document.getElementById('recipeName').value = recipe.name || "";
                         document.getElementById('recipeDesc').value = recipe.desc || "";
-                        // 載入排序權重
                         document.getElementById('recipeOrder').value = recipe.sortOrder !== undefined ? recipe.sortOrder : "";
                         
                         currentExistingImg = recipe.image || "";
@@ -173,6 +180,36 @@
             });
         }
 
+        // PDF 下載邏輯
+        document.getElementById('downloadPdfBtn').addEventListener('click', () => {
+            const recipeName = document.getElementById('recipeName').value || "未命名食譜";
+            const element = document.getElementById('pdfArea');
+            
+            // 隱藏表單中的操作按鈕，避免按鈕被印進 PDF 裡
+            const actions = document.querySelector('.modal-actions');
+            const addBtn = document.getElementById('addVideoFieldBtn');
+            const deleteBtns = document.querySelectorAll('.btn-danger');
+            
+            actions.style.visibility = 'hidden';
+            addBtn.style.display = 'none';
+            deleteBtns.forEach(b => b.style.visibility = 'hidden');
+
+            const opt = {
+                margin:       10,
+                filename:     `${recipeName}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                // 下載完成後恢復按鈕顯示
+                actions.style.visibility = 'visible';
+                addBtn.style.display = 'inline-block';
+                deleteBtns.forEach(b => b.style.visibility = 'visible');
+            });
+        });
+
         document.getElementById('recipeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
@@ -197,13 +234,12 @@
                 finalStepImgData = await compressImage(stepFileInput.files[0], 1024, 0.55);
             }
 
-            // 處理排序權重轉為數字類型
             const orderInput = document.getElementById('recipeOrder').value;
             const finalSortOrder = orderInput === "" ? 999 : parseInt(orderInput, 10);
 
             const data = { 
                 name: document.getElementById('recipeName').value, 
-                sortOrder: finalSortOrder, // 寫入排序欄位
+                sortOrder: finalSortOrder,
                 image: finalImgData, 
                 stepImage: finalStepImgData, 
                 youtubes: urls, 
