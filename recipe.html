@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>食譜詳情</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
         body { background-color: #f9f6f0; color: #4a3c31; padding: 2rem 1rem; }
@@ -13,10 +12,6 @@
         .top-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .btn-back { display: inline-block; color: #7f8c8d; text-decoration: none; font-size: 1rem; background: #eee; padding: 6px 15px; border-radius: 20px; font-weight: bold; }
         .btn-back:hover { background: #ddd; }
-        
-        /* PDF 下載按鈕樣式 */
-        .btn-download-pdf { display: inline-flex; align-items: center; gap: 5px; color: white; text-decoration: none; font-size: 1rem; background: #9b59b6; padding: 6px 15px; border-radius: 20px; font-weight: bold; border: none; cursor: pointer; }
-        .btn-download-pdf:hover { background: #8e44ad; }
 
         h2 { color: #d35400; margin-bottom: 1.5rem; font-size: 2.2rem; border-bottom: 2px solid #ffb347; padding-bottom: 0.5rem; }
         
@@ -26,9 +21,14 @@
         
         .video-section { margin-bottom: 2.5rem; background: #fdfaf7; padding: 1.2rem; border-radius: 8px; border: 1px dashed #ffcc33; }
         .video-section h3 { color: #c0392b; margin-bottom: 0.8rem; }
-        .video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
         .video-btn { display: block; text-align: center; background: #ff4757; color: white; text-decoration: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 1rem; }
         .video-btn:hover { background: #ff6b81; }
+
+        /* 🔥 新增：PDF 下載按鈕專屬樣式 */
+        .pdf-download-block { border-top: 1px dashed #ddd; padding-top: 12px; margin-top: 5px; }
+        .btn-mega-pdf { display: block; text-align: center; background: #9b59b6; color: white; text-decoration: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 1rem; }
+        .btn-mega-pdf:hover { background: #8e44ad; }
 
         .steps-section { border-top: 2px dashed #e0d0c0; padding-top: 2rem; margin-top: 2rem; }
         .steps-section h3 { color: #2c3e50; margin-bottom: 1rem; font-size: 1.3rem; }
@@ -82,15 +82,32 @@
                 if (docSnap.exists()) {
                     const recipe = docSnap.data();
                     
+                    // 1. 處理影片區塊
                     let videoHtml = '';
-                    if(recipe.youtubes && recipe.youtubes.length > 0) {
-                        videoHtml = `<div class="video-section"><h3>📺 示範教學影片：</h3><div class="video-grid">`;
-                        recipe.youtubes.forEach((url, i) => {
-                            videoHtml += `<a href="${url}" target="_blank" class="video-btn">▶ 點選播放教學影片 ${i+1}</a>`;
-                        });
-                        videoHtml += `</div></div>`;
+                    if((recipe.youtubes && recipe.youtubes.length > 0) || recipe.pdfUrl) {
+                        videoHtml = `<div class="video-section"><h3>📺 示範教學影片：</h3>`;
+                        
+                        if(recipe.youtubes && recipe.youtubes.length > 0) {
+                            videoHtml += `<div class="video-grid">`;
+                            recipe.youtubes.forEach((url, i) => {
+                                videoHtml += `<a href="${url}" target="_blank" class="video-btn">▶ 點選播放教學影片 ${i+1}</a>`;
+                            });
+                            videoHtml += `</div>`;
+                        }
+                        
+                        // 🔥 核心修正：在示範影片區塊下方，如果有設定 pdfUrl 就顯示下載按鈕
+                        if(recipe.pdfUrl) {
+                            videoHtml += `
+                                <div class="pdf-download-block">
+                                    <a href="${recipe.pdfUrl}" target="_blank" class="btn-mega-pdf">📥 下載此食譜完整版 PDF 檔案</a>
+                                </div>
+                            `;
+                        }
+                        
+                        videoHtml += `</div>`;
                     }
 
+                    // 2. 處理步驟圖區塊
                     let stepImageHtml = '';
                     if(recipe.stepImage) {
                         stepImageHtml = `
@@ -107,10 +124,10 @@
                         `;
                     }
 
+                    // 3. 組合渲染
                     container.innerHTML = `
                         <div class="top-actions">
                             <a href="index.html" class="btn-back">⬅ 返回食譜首頁</a>
-                            <button id="downloadPdfBtn" class="btn-download-pdf">📥 下載此食譜 PDF</button>
                         </div>
                         <div id="printArea">
                             <h2>${recipe.name}</h2>
@@ -126,19 +143,6 @@
                             ${stepImageHtml}
                         </div>
                     `;
-
-                    // 綁定前台 PDF 下載事件
-                    document.getElementById('downloadPdfBtn').addEventListener('click', () => {
-                        const element = document.getElementById('printArea');
-                        const opt = {
-                            margin:       10,
-                            filename:     `${recipe.name || '食譜'}.pdf`,
-                            image:        { type: 'jpeg', quality: 0.98 },
-                            html2canvas:  { scale: 2, useCORS: true }, // 啟用跨域支援以讀取 base64 圖片
-                            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                        };
-                        html2pdf().set(opt).from(element).save();
-                    });
 
                 } else {
                     container.innerHTML = `<p>該食譜已不存在！</p>`;
